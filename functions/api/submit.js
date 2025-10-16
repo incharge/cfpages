@@ -1,40 +1,133 @@
-import { EmailMessage } from "cloudflare:email";
-import { createMimeMessage } from "mimetext";
-
-/**
- * POST /api/submit
- */
-export async function onRequestPost(context) {
-    try {
-        const msg = createMimeMessage();
-        msg.setSender({ name: "GPT-4", addr: "sender@knownas.co.uk" });
-        msg.setRecipient("cloudflare@incharge.co.uk");
-        msg.setSubject("An email generated in a worker");
-        msg.addMessage({
-            contentType: "text/plain",
-            data: `Congratulations, you just sent an email from a worker.`,
-        });
-
-        var message = new EmailMessage(
-            "sender@knownas.co.uk",
-            "cloudflare@incharge.co.uk",
-            msg.asRaw(),
-        );
-
-        await context.env.SEB.send(message);
-    } catch (e) {
-      return new Response(e.message);
+export default {
+  async fetch(request, env) {
+    // Handle CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      });
     }
 
-  try {
-    let input = await context.request.formData();
-    let pretty = JSON.stringify([...input], null, 2);
-    return new Response(pretty, {
-      headers: {
-        "Content-Type": "application/json;charset=utf-8",
-      },
-    });
-  } catch (err) {
-    return new Response("Error parsing JSON content", { status: 400 });
-  }
+    // Only allow POST requests
+    if (request.method !== 'POST') {
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    try {
+      const data = await request.json();
+      const { name, email, subject, message, turnstileToken } = data;
+
+      // Validate required fields
+      if (!name || !email || !subject || !message || !turnstileToken) {
+        return new Response(
+          JSON.stringify({ error: 'All fields are required' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid email format' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify Turnstile token
+      const turnstileVerification = await fetch(
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            secret: env.TURNSTILE_SECRET_KEY,
+            response: turnstileToken,
+          }),
+        }
+      );
+
+      const turnstileResult = await turnstileVerification.json();
+
+      if (!turnstileResult.success) {
+        return new Response(
+          JSON.stringify({ error: 'CAPTCHA verification failed' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Send email via Resend
+      const resendResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: env.FROM_EMAIL, // e.g., 'Contact Form <noreply@yourdomain.com>'
+          to: env.TO_EMAIL, // Your Gmail address
+          subject: `Contact Form: ${subject}`,
+          html: `
+            <h2>New Contact Form Submission</h2>
+            <p><strong>Name:</strong> ${escapeHtml(name)}</p>
+            <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+            <p><strong>Subject:</strong> ${escapeHtml(subject)}</p>
+            <p><strong>Message:</strong></p>
+            <p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>
+            <hr>
+            <p style="color: #666; font-size: 12px;">
+              Sent from your website contact form
+            </p>
+          `,
+          reply_to: email,
+        }),
+      });
+
+      if (!resendResponse.ok) {
+        const errorData = await resendResponse.json();
+        console.error('Resend API error:', errorData);
+        return new Response(
+          JSON.stringify({ error: 'Failed to send email' }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Email sent successfully' }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      );
+    } catch (error) {
+      console.error('Error:', error);
+      return new Response(
+        JSON.stringify({ error: 'Internal server error' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  },
+};
+
+// Helper function to escape HTML and prevent XSS
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return text.replace(/[&<>"']/g, (m) => map[m]);
 }

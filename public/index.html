@@ -1,61 +1,240 @@
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf8" />
-    <title>Form Demo</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-  </head>
-  <body>
-    <form method="POST" action="/api/submit">
-      <div class="input">
-        <label for="name">Full Name</label>
-        <input id="name" name="name" type="text" />
-      </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Form</title>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        .turnstile-container {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 14px;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Get in Touch</h1>
+        <p class="subtitle">Fill out the form below and we'll get back to you soon.</p>
+        
+        <div id="message" class="message"></div>
+        
+        <form id="contactForm">
+            <div class="form-group">
+                <label for="name">Name *</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="subject">Subject *</label>
+                <input type="text" id="subject" name="subject" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="message">Message *</label>
+                <textarea id="messageText" name="message" required></textarea>
+            </div>
+            
+            <div class="turnstile-container">
+                <div class="cf-turnstile" data-sitekey="0x4AAAAAAB69zO3J9FFp4gVd"></div>
+            </div>
+            
+            <button type="submit" id="submitBtn">Send Message</button>
+        </form>
+    </div>
 
-      <div class="input">
-        <label for="email">Email Address</label>
-        <input id="email" name="email" type="email" />
-      </div>
-
-      <div class="input">
-        <label for="referers">How did you hear about us?</label>
-        <select id="referers" name="referers">
-          <option hidden disabled selected value></option>
-          <option value="Facebook">Facebook</option>
-          <option value="Twitter">Twitter</option>
-          <option value="Google">Google</option>
-          <option value="Bing">Bing</option>
-          <option value="Friends">Friends</option>
-        </select>
-      </div>
-
-      <div class="checklist">
-        <label>What are your favorite movies?</label>
-        <ul>
-          <li>
-            <input id="m1" type="checkbox" name="movies" value="Space Jam" />
-            <label for="m1">Space Jam</label>
-          </li>
-          <li>
-            <input
-              id="m2"
-              type="checkbox"
-              name="movies"
-              value="Little Rascals"
-            />
-            <label for="m2">Little Rascals</label>
-          </li>
-          <li>
-            <input id="m3" type="checkbox" name="movies" value="Frozen" />
-            <label for="m3">Frozen</label>
-          </li>
-          <li>
-            <input id="m4" type="checkbox" name="movies" value="Home Alone" />
-            <label for="m4">Home Alone</label>
-          </li>
-        </ul>
-      </div>
-
-      <button type="submit">Submit</button>
-    </form>
-  </body>
+    <script>
+        const form = document.getElementById('contactForm');
+        const messageDiv = document.getElementById('message');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const turnstileResponse = document.querySelector('[name="cf-turnstile-response"]')?.value;
+            
+            if (!turnstileResponse) {
+                showMessage('Please complete the CAPTCHA verification', 'error');
+                return;
+            }
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span>Sending...';
+            
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                subject: document.getElementById('subject').value,
+                message: document.getElementById('messageText').value,
+                turnstileToken: turnstileResponse
+            };
+            
+            try {
+                const response = await fetch('/api/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Thank you! Your message has been sent successfully.', 'success');
+                    form.reset();
+                    turnstile.reset();
+                } else {
+                    showMessage(data.error || 'Something went wrong. Please try again.', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error. Please check your connection and try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Send Message';
+            }
+        });
+        
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    </script>
+</body>
 </html>
