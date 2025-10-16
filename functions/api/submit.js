@@ -1,23 +1,5 @@
-export default {
-  async fetch(request, env) {
-    // Handle CORS preflight
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        },
-      });
-    }
-
-    // Only allow POST requests
-    if (request.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-        status: 405,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+async function onRequestPost(context) {
+    const request = context.request;
 
     try {
       const data = await request.json();
@@ -117,8 +99,8 @@ export default {
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
-  },
-};
+  }
+
 
 // Helper function to escape HTML and prevent XSS
 function escapeHtml(text) {
